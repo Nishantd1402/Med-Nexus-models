@@ -80,15 +80,11 @@ pygments-markdown-lexer==0.1.0.dev39
 pyOpenSSL==23.2.0
 PyPDF2==3.0.1
 python-dateutil==2.8.2
-pytz==2023.3.post1
-pywin32==306
-PyYAML==6.0.1
 regex==2023.12.25
 requests==2.31.0
 requests-oauthlib==1.3.1
 rich==13.9.4
 rsa==4.9
-safetensors==0.4.1
 six==1.16.0
 smart-open==6.4.0
 sniffio==1.3.1
