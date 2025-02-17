@@ -16,6 +16,7 @@ from test import extract_text_from_pdf
 #     return img_array
 
 FILENAME = "pneumonia_model.h5"
+os.makedirs('files')
 
 def get_completion_0(data , prompt):
     try:
