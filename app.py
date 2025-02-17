@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request
-import tensorflow as tf
+# import tensorflow as tf
 # from tensorflow.keras.preprocessing import image
 import numpy as np
 # from io import BytesIO
