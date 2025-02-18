@@ -1,12 +1,14 @@
 import os
 from flask import Flask, request
-# import tensorflow as tf
+import tensorflow as tf
 # from tensorflow.keras.preprocessing import image
 import numpy as np
 # from io import BytesIO
 from flask_cors import CORS
 from groq import Groq
 from test import extract_text_from_pdf
+import re
+import json
 
 # def prepare_image(img, target_size=(150, 150)):
 #     img = image.load_img(img, target_size=target_size)  # Load the image with target size
@@ -15,8 +17,25 @@ from test import extract_text_from_pdf
 #     img_array = img_array / 255.0  # Rescale the image to the same range as the training data
 #     return img_array
 
+def extract_json(data):
+     # Use regex to extract content inside triple backticks
+    match = re.search(r'```(.*?)```', data, re.DOTALL)
+    
+    if match:
+        json_str = match.group(1).strip()  # Extract JSON content and remove extra spaces
+        try:
+            return json.loads(json_str)  # Convert to Python dictionary
+        except json.JSONDecodeError as e:
+            print("Invalid JSON:", e)
+            return None
+    else:
+        print("No JSON found in backticks")
+        return None
+
 FILENAME = "pneumonia_model.h5"
-os.makedirs('files')
+folder_path = 'files'
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path)
 
 def get_completion_0(data , prompt):
     try:
@@ -28,7 +47,7 @@ def get_completion_0(data , prompt):
                     {"role": "user", "content": f"{prompt}. here is the data : {data}"}
                 ],
                 model="llama3-70b-8192",
-                temperature=0.1  # Adjust randomness
+                temperature=0.01  # Adjust randomness
             )
             response = chat_completion.choices[0].message.content
             return response
@@ -100,10 +119,30 @@ When to consult a doctor.
 Urgency Indicator:
 
 Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
-Structured Output (JSON format):
 
-Provide a structured JSON output suitable for API integration."""
-    return get_completion_0(data=data , prompt=prompt)
+Follow this Output format strictly.
+{
+  "output_format": {
+    "disease_detection": {
+      "possible_conditions": ["Anemia", "Leukopenia", "Leukocytosis", "Thrombocytopenia", "Thrombocytosis", "Infection", "Bone Marrow Disorders"],
+      "analysis": "Detailed explanation of detected abnormalities in RBC, WBC, hemoglobin, hematocrit, and platelets, along with their medical significance."
+    },
+    "severity_assessment": {
+      "category": "Normal / Mild / Moderate / Severe",
+      "explanation": "Justification based on standard reference ranges for CBC parameters and clinical interpretation."
+    },
+    "recommendations": {
+      "dietary_changes": "List of recommended foods for blood health, including iron-rich foods, vitamin B12 sources, and hydration tips.",
+      "lifestyle_changes": "Suggestions for maintaining healthy blood parameters, including exercise, hydration, and stress management.",
+      "medical_attention": "Guidance on when to consult a hematologist for further testing or treatment."
+    },
+    "urgency": "Immediate Concern / Follow-up Needed / No Significant Issue"
+  }
+}
+"""
+    response = get_completion_0(data=data , prompt=prompt)
+    print(response)
+    return extract_json(response)
 
 @app.route('/Thyroid_report' , methods=["POST"])
 def Thyroid_report():
@@ -142,9 +181,29 @@ Provide basic lifestyle or dietary modifications.
 Advise when to consult an endocrinologist for medication or further tests.
 Urgency Indicator:
 
-Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue."""
-    return get_completion_0(data=data , prompt=prompt)
+Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
 
+{
+  "output_format": {
+    "disease_detection": {
+      "possible_conditions": ["Hypothyroidism", "Hyperthyroidism", "Hashimoto’s Thyroiditis", "Graves' Disease", "Thyroid Nodules", "Thyroiditis"],
+      "analysis": "Detailed explanation of detected abnormalities in TSH, T3, T4, Free T3, Free T4, and thyroid antibodies, along with their medical significance."
+    },
+    "severity_assessment": {
+      "category": "Normal / Mild / Moderate / Severe",
+      "explanation": "Justification based on standard reference ranges for thyroid function tests and clinical interpretation."
+    },
+    "recommendations": {
+      "dietary_changes": "List of recommended foods such as iodine-rich foods, selenium sources, and goitrogen avoidance.",
+      "lifestyle_changes": "Suggestions for maintaining thyroid health, including stress management, regular exercise, and sleep hygiene.",
+      "medical_attention": "Guidance on when to consult an endocrinologist for medication adjustments, imaging, or further hormonal assessments."
+    },
+    "urgency": "Immediate Concern / Follow-up Needed / No Significant Issue"
+  }
+}
+"""
+    response = get_completion_0(data=data , prompt=prompt)
+    return extract_json(response)
 @app.route('/report' , methods=["POST"])
 def report():
     prompt = '''Prompt:
@@ -191,8 +250,30 @@ Advise when to consult a hepatologist or gastroenterologist for medication, furt
 Urgency Indicator:
 Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
 Highlight whether further testing or immediate medical intervention is required based on abnormal results.
+
+Follow this output format strictly. Only JSON output
+{
+  "output_format": {
+    "disease_detection": {
+      "possible_conditions": ["Hepatitis", "Cirrhosis", "Fatty Liver Disease", "Liver Failure", "Cholestasis"],
+      "analysis": "Detailed explanation of detected abnormalities and their medical significance."
+    },
+    "severity_assessment": {
+      "category": "Normal / Mild / Moderate / Severe",
+      "explanation": "Justification based on reference ranges and medical interpretation."
+    },
+    "recommendations": {
+      "dietary_changes": "List of recommended foods and those to avoid.",
+      "lifestyle_changes": "Suggestions for maintaining liver health.",
+      "medical_attention": "When to consult a specialist."
+    },
+    "urgency": "Immediate Concern / Follow-up Needed / No Significant Issue"
+  }
+}
+
 """
-    return get_completion_0(data=data , prompt=prompt)
+    response = get_completion_0(data=data , prompt=prompt)
+    return extract_json(response)
 
 # Main driver function
 if __name__ == '__main__':
