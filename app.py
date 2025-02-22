@@ -344,6 +344,69 @@ Extract the following values from the report:
     print(response)
     return extract_json(response)
 
+@app.route('/urine_report' , methods=["POST"])
+def urine_report():
+    prompt = """You are given a pathology report in text format. Extract the relevant values for the Urine Culture & Sensitivity Test and format them in the following JSON structure. Ensure that each value is associated with its correct unit, and ignore any unnecessary information. Below is the expected structure of the output:
+
+Extract the following values from the report:
+- Organism Isolated
+- Colony Count (CFU/ml)
+- Impression
+- Antibiotic Sensitivity (List of antibiotics categorized as Sensitive or Resistant)
+"""
+    file = request.files['report']
+    filepath = 'files/'
+    filename = file.filename
+    filepath = os.path.join(filepath, filename)
+    file.save(filepath)
+    data = extract_text_from_pdf(filepath, prompt=prompt)
+    
+    analysis_prompt = """You are a medical AI assistant specializing in urinary tract infections (UTIs) and microbiology. Given a patient's Urine Culture & Sensitivity Test data in JSON format, analyze the parameters to identify possible infections, their severity, and provide necessary precautions. Your response should include:
+
+    Infection Detection:
+    - Identify possible infections based on the organism isolated and colony count.
+    - Provide reasoning based on microbiological findings.
+    
+    Severity Assessment:
+    - Categorize as Normal, Mild, Moderate, or Severe based on threshold deviations.
+    
+    Precautions & Preventive Measures:
+    - Suggest hygiene practices, fluid intake recommendations, and monitoring guidelines.
+    - Recommend when to seek medical attention.
+    
+    Treatment Recommendations (General Guidance):
+    - Basic dietary or lifestyle changes.
+    - Importance of completing prescribed antibiotic courses.
+    - When to consult a doctor.
+    
+    Urgency Indicator:
+    - Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
+
+    Follow this Output format strictly:
+    {
+      "output_format": {
+        "infection_detection": {
+          "possible_conditions": ["Urinary Tract Infection (UTI)", "Kidney Infection", "Asymptomatic Bacteriuria", "Resistant Bacterial Infection"],
+          "analysis": "Detailed explanation of detected bacterial organisms, their significance, and antibiotic sensitivity results."
+        },
+        "severity_assessment": {
+          "category": "Normal / Mild / Moderate / Severe",
+          "explanation": "Justification based on standard reference ranges for colony count and organism pathogenicity."
+        },
+        "recommendations": {
+          "hygiene_practices": "Suggestions for personal hygiene, hydration, and UTI prevention.",
+          "lifestyle_changes": "Tips on maintaining urinary tract health, avoiding triggers, and recognizing early symptoms.",
+          "medical_attention": "Guidance on when to consult a urologist or start antibiotic treatment."
+        },
+        "urgency": "Immediate Concern / Follow-up Needed / No Significant Issue"
+      }
+    }
+    """
+    response = get_completion_0(data=data, prompt=analysis_prompt)
+    print(response)
+    return extract_json(response)
+
+
 # Main driver function
 if __name__ == '__main__':
     app.run(debug=True)
