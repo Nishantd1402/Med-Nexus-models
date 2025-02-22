@@ -385,7 +385,7 @@ Extract the following values from the report:
     Follow this Output format strictly:
     {
       "output_format": {
-        "infection_detection": {
+        "disease_detection": {
           "possible_conditions": ["Urinary Tract Infection (UTI)", "Kidney Infection", "Asymptomatic Bacteriuria", "Resistant Bacterial Infection"],
           "analysis": "Detailed explanation of detected bacterial organisms, their significance, and antibiotic sensitivity results."
         },
@@ -394,10 +394,10 @@ Extract the following values from the report:
           "explanation": "Justification based on standard reference ranges for colony count and organism pathogenicity."
         },
         "recommendations": {
-          "hygiene_practices": "Suggestions for personal hygiene, hydration, and UTI prevention.",
-          "lifestyle_changes": "Tips on maintaining urinary tract health, avoiding triggers, and recognizing early symptoms.",
-          "medical_attention": "Guidance on when to consult a urologist or start antibiotic treatment."
-        },
+           "dietary_changes": "Increase water intake; avoid caffeine, alcohol, and spicy foods.",
+           "lifestyle_changes": "Maintain hygiene, urinate frequently to flush bacteria, and avoid holding urine for long periods.",
+           "medical_attention": "Consult a doctor if symptoms persist or if antibiotic resistance is detected."
+       },
         "urgency": "Immediate Concern / Follow-up Needed / No Significant Issue"
       }
     }
@@ -447,23 +447,26 @@ Extract the following values from the report:
 
     Follow this Output format strictly:
     {
-      "output_format": {
-        "abnormality_detection": {
-          "possible_conditions": ["Metastatic Cancer", "Benign Tumor", "Inflammatory Disease", "Esophagitis", "Lung Disease", "Bone Disorders"],
-          "analysis": "Detailed explanation of detected abnormalities in various body regions based on PET scan results."
+       "output_format": {
+        "disease_detection": {
+            "possible_conditions": [
+                "Metastatic Cancer", "Breast Tumor", "Esophagitis", "Pleural Effusion", "Osseous Lesions"
+            ],
+            "analysis": "Findings indicate hypermetabolic lesions, suggesting potential malignancy. "
+                        "Abnormal metabolic activity requires further evaluation."
         },
         "severity_assessment": {
-          "category": "Normal / Mild / Moderate / Severe",
-          "explanation": "Justification based on standard reference ranges and clinical interpretation."
+            "category": "Normal / Mild / Moderate / Severe",
+            "explanation": "Severity is assessed based on the extent of hypermetabolic activity and spread of lesions."
         },
         "recommendations": {
-          "follow_up": "Suggestions for additional imaging, biopsies, or monitoring.",
-          "lifestyle_changes": "Tips on maintaining overall metabolic health and addressing potential findings.",
-          "medical_attention": "Guidance on when to consult a radiologist or oncologist for further evaluation."
+            "dietary_changes": "Ensure adequate nutrition to maintain energy levels.",
+            "lifestyle_changes": "Avoid smoking and alcohol; regular follow-ups with oncologists are necessary.",
+            "medical_attention": "Oncological consultation recommended for biopsy and further diagnostics."
         },
         "urgency": "Immediate Concern / Follow-up Needed / No Significant Issue"
-      }
     }
+}
     """
     
     response = get_completion_0(data=data, prompt=analysis_prompt)
