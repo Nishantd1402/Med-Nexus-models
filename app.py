@@ -446,7 +446,7 @@ Extract the following values from the report:
     Urgency Indicator:
     - Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
 
-    Follow this Output format strictly:
+    Follow this Output format strictly.
     {
       "output_format": {
         "disease_detection": {
@@ -512,7 +512,7 @@ Extract the following values from the report:
     Urgency Indicator:
     - Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
 
-    Follow this Output format strictly:
+    Follow this Output format strictly.
     {
       "output_format": {
         "infection_detection": {
@@ -578,15 +578,12 @@ Extract the following values from the report:
     Urgency Indicator:
     - Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
 
-    Follow this Output format strictly:
+    Follow this Output format strictly.
     {
       "output_format": {
         "abnormality_detection": {
           "possible_conditions": ["Metastatic Cancer", "Benign Tumor", "Inflammatory Disease", "Esophagitis", "Lung Disease", "Bone Disorders"],
           "analysis": "Detailed explanation of detected abnormalities in various body regions based on PET scan results."
-
-
-
         },
         "severity_assessment": {
           "category": "Normal / Mild / Moderate / Severe",
