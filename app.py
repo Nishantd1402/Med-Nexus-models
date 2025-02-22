@@ -406,6 +406,69 @@ Extract the following values from the report:
     print(response)
     return extract_json(response)
 
+@app.route('/pet_scan_report' , methods=["POST"])
+def pet_scan_report():
+    prompt = """You are given a radiology report in text format. Extract the relevant values for the PET Scan and format them in the following JSON structure. Ensure that each value is associated with its correct unit, and ignore any unnecessary information. Below is the expected structure of the output:
+
+Extract the following values from the report:
+- Examination Type
+- Radiotracer Used
+- Dose (millicuries)
+- Blood Glucose Level (mg/dL)
+- Findings (Neck, Chest, Abdomen/Pelvis, Skeletal)
+- Impression (Key observations)
+"""
+    file = request.files['report']
+    filepath = 'files/'
+    filename = file.filename
+    filepath = os.path.join(filepath, filename)
+    file.save(filepath)
+    data = extract_text_from_pdf(filepath, prompt=prompt)
+    
+    analysis_prompt = """You are a medical AI assistant specializing in radiology and PET scan analysis. Given a patient's PET scan data in JSON format, analyze the parameters to identify possible abnormalities, their severity, and provide necessary precautions. Your response should include:
+
+    Abnormality Detection:
+    - Identify possible conditions based on PET scan findings.
+    - Provide reasoning based on observed hypermetabolic or hypometabolic activity.
+    
+    Severity Assessment:
+    - Categorize as Normal, Mild, Moderate, or Severe based on threshold deviations.
+    
+    Precautions & Preventive Measures:
+    - Suggest follow-up imaging, biopsy recommendations, and lifestyle adjustments.
+    - Recommend when to seek medical attention.
+    
+    Treatment Recommendations (General Guidance):
+    - Basic lifestyle and dietary suggestions for metabolic health.
+    - When to consult a radiologist or oncologist.
+    
+    Urgency Indicator:
+    - Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
+
+    Follow this Output format strictly:
+    {
+      "output_format": {
+        "abnormality_detection": {
+          "possible_conditions": ["Metastatic Cancer", "Benign Tumor", "Inflammatory Disease", "Esophagitis", "Lung Disease", "Bone Disorders"],
+          "analysis": "Detailed explanation of detected abnormalities in various body regions based on PET scan results."
+        },
+        "severity_assessment": {
+          "category": "Normal / Mild / Moderate / Severe",
+          "explanation": "Justification based on standard reference ranges and clinical interpretation."
+        },
+        "recommendations": {
+          "follow_up": "Suggestions for additional imaging, biopsies, or monitoring.",
+          "lifestyle_changes": "Tips on maintaining overall metabolic health and addressing potential findings.",
+          "medical_attention": "Guidance on when to consult a radiologist or oncologist for further evaluation."
+        },
+        "urgency": "Immediate Concern / Follow-up Needed / No Significant Issue"
+      }
+    }
+    """
+    
+    response = get_completion_0(data=data, prompt=analysis_prompt)
+    print(response)
+    return extract_json(response)
 
 # Main driver function
 if __name__ == '__main__':
