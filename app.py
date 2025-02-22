@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request
+from flask import Flask, request , session
 #import tensorflow as tf
 # from tensorflow.keras.preprocessing import image
 import numpy as np
@@ -32,6 +32,17 @@ def extract_json(data):
         print("No JSON found in backticks")
         return None
 
+def extract_json_0(input_text):
+    try:
+        start = input_text.find('{')
+        end = input_text.rfind('}')
+        if start != -1 and end != -1:
+            return input_text[start:end + 1]
+        else:
+            return "No JSON-like structure found."
+    except Exception as e:
+        return f"An error occurred: {e}"
+
 FILENAME = "pneumonia_model.h5"
 folder_path = 'files'
 if not os.path.exists(folder_path):
@@ -53,11 +64,29 @@ def get_completion_0(data , prompt):
             return response
     except Exception as e:
         return "An error occurred while generating the response."
+      
+def get_completion(prompt , data=None):
+    try:
+            client = Groq(api_key="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")
+
+            # Generate the completion using the OpenAI client
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {"role": "user", "content": f"{prompt}"}
+                ],
+                model="llama3-70b-8192",
+                temperature=0.01  # Adjust randomness
+            )
+            response = chat_completion.choices[0].message.content
+            return response
+    except Exception as e:
+        return "An error occurred while generating the response."
 
 # Load the model only once during initialization
 # pneumonia_model = tf.keras.models.load_model(FILENAME)
 app = Flask(__name__)
 CORS(app)
+app.secret_key = 'your-strong-secret-key'
 
 
 # @app.route('/pneumonia', methods=['POST'])
@@ -79,6 +108,92 @@ CORS(app)
     
 #     # Return the classification result
 #     return predicted_class
+
+@app.route('/symptoms' , methods=['POST'])
+def symptom():
+  data = request.form.get('symptom')
+  prompt = f"""Here is a list of symptoms observed in a patient. Provide a list of conditions they may suffer from. Analyze the symptoms carefully and only include conditions that have a strong likelihood based on the given symptoms.
+
+Symptoms:
+{data}
+
+Provide the output in the following JSON format:
+
+{{
+    "conditions": [
+        {{
+            "name": "<Condition Name>",
+            "likelihood": "<High/Moderate>",
+            "reasoning": "<Brief explanation based on symptoms>"
+        }},
+        {{
+            "name": "<Condition Name>",
+            "likelihood": "<High/Moderate>",
+            "reasoning": "<Brief explanation based on symptoms>"
+        }}
+    ]
+}}"""
+  
+  analysis = extract_json_0(get_completion(prompt=prompt , data=None))
+  session['analysis'] = analysis
+  prompt2 = f"""You are given an initial analysis of a user's symptoms: ```{data}```, try to identify and narrow down the possible condition from the given analysis: ```{analysis}``` and narrow down on those conditions by asking only 2 questions.
+
+Provide the output in the following JSON format:
+
+{{
+    "questions": [
+        {{
+            "question_1": "Does the headache occur with a throbbing or pulsating sensation?",
+            "options_1": ["Yes", "No", "Not Sure"]
+        }},
+        {{
+            "question_2": "Have you experienced any aura (flashing lights, blind spots, or tingling) before the headache starts?",
+            "options_2": ["Yes", "No", "Not Sure"]
+        }}
+    ]
+}}
+"""
+
+  question = extract_json(get_completion(prompt=prompt2 , data=None))
+  session['symp'] = data
+  return question
+
+@app.route('/final_symptom' , methods=["POST"])
+def final_symptom():
+  conv = request.form.get('symptom')
+  
+  prompt3 = f"""analyze the question and symptoms narrow down to 1 condition with highest likelihood which user might have and suggest next steps to confirm the condition mentioned in analysis, using tests or visiting the doctor. Symtoms = ```{session.get('symp')}```. initial analysis - ```{session.get('analysis')}``` questions and user ansers = ```{conv}```
+
+
+Provide the output in the following JSON format:
+{{
+    "conditions": [
+        {{
+            "name": "name of condition",
+            "likelihood": "Low/Moderate/High",
+            "reason": "Brief explanation of why this condition is likely based on symptoms and user responses.",
+            "next_steps": [
+                "Step 1 for confirmation (e.g., consult a specialist).",
+                "Step 2 for further evaluation (e.g., medical tests).",
+                "Step 3 for monitoring or management."
+            ]
+        }},
+        {{
+            "name": "name of condition",
+            "likelihood": "Low/Moderate/High",
+            "reason": "Brief explanation of why this condition is considered but with less certainty.",
+            "next_steps": [
+                "Step 1 for confirmation.",
+                "Step 2 for further evaluation.",
+                "Step 3 for symptom tracking."
+            ]
+        }}
+    ]
+}}"""
+  results = extract_json_0((get_completion(prompt=prompt3 , data=None)))
+  print(type(results))
+  return json.loads(results)
+
 
 @app.route('/CBC_report' , methods=["POST"])
 def CBC_report():
@@ -273,204 +388,6 @@ Follow this output format strictly. Only JSON output
 
 """
     response = get_completion_0(data=data , prompt=prompt)
-    return extract_json(response)
-     
-@app.route('/KFT_report' , methods=["POST"])
-def KFT_report():
-    prompt = """You are given a pathology report in text format. Extract the relevant values for the Kidney Function Test (KFT) and format them in the following JSON structure. Ensure that each value is associated with its correct unit, and ignore any unnecessary information. Below is the expected structure of the output:
-
-Extract the following values from the report:
-- Urea
-- Creatinine
-- Uric Acid
-- Calcium
-- Phosphorus
-- Alkaline Phosphatase (ALP)
-- Total Protein
-- Albumin
-- Sodium
-- Potassium
-- Chloride
-"""
-    file = request.files['report']
-    filepath = 'files/'
-    filename = file.filename
-    filepath = os.path.join(filepath, filename)
-    file.save(filepath)
-    data = extract_text_from_pdf(filepath, prompt=prompt)
-    
-    analysis_prompt = """You are a medical AI assistant specializing in nephrology and kidney function analysis. Given a patient's Kidney Function Test (KFT) data in JSON format, analyze the parameters to identify possible kidney-related diseases, their severity, and provide necessary precautions. Your response should include:
-
-    Disease Detection:
-    - Identify potential diseases or conditions based on abnormalities in KFT values.
-    - Provide reasoning based on parameter deviations.
-    
-    Severity Assessment:
-    - Categorize as Normal, Mild, Moderate, or Severe based on threshold deviations.
-    
-    Precautions & Preventive Measures:
-    - Suggest lifestyle changes, diet recommendations, and monitoring guidelines.
-    - Recommend when to seek medical attention.
-    
-    Treatment Recommendations (General Guidance):
-    - Basic dietary or lifestyle changes.
-    - When to consult a doctor.
-    
-    Urgency Indicator:
-    - Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
-
-    Follow this Output format strictly:
-    {
-      "output_format": {
-        "disease_detection": {
-          "possible_conditions": ["Chronic Kidney Disease", "Acute Kidney Injury", "Electrolyte Imbalance", "Hyperuricemia", "Hypocalcemia", "Hyperphosphatemia", "Dehydration"],
-          "analysis": "Detailed explanation of detected abnormalities in urea, creatinine, uric acid, electrolytes, and protein levels, along with their medical significance."
-        },
-        "severity_assessment": {
-          "category": "Normal / Mild / Moderate / Severe",
-          "explanation": "Justification based on standard reference ranges for KFT parameters and clinical interpretation."
-        },
-        "recommendations": {
-          "dietary_changes": "List of recommended foods for kidney health, including low-sodium diet, hydration tips, and foods to avoid.",
-          "lifestyle_changes": "Suggestions for maintaining kidney function, including exercise, hydration, and avoiding nephrotoxic substances.",
-          "medical_attention": "Guidance on when to consult a nephrologist for further testing or treatment."
-        },
-        "urgency": "Immediate Concern / Follow-up Needed / No Significant Issue"
-      }
-    }
-    """
-    
-    response = get_completion_0(data=data, prompt=analysis_prompt)
-    print(response)
-    return extract_json(response)
-
-@app.route('/urine_report' , methods=["POST"])
-def urine_report():
-    prompt = """You are given a pathology report in text format. Extract the relevant values for the Urine Culture & Sensitivity Test and format them in the following JSON structure. Ensure that each value is associated with its correct unit, and ignore any unnecessary information. Below is the expected structure of the output:
-
-Extract the following values from the report:
-- Organism Isolated
-- Colony Count (CFU/ml)
-- Impression
-- Antibiotic Sensitivity (List of antibiotics categorized as Sensitive or Resistant)
-"""
-    file = request.files['report']
-    filepath = 'files/'
-    filename = file.filename
-    filepath = os.path.join(filepath, filename)
-    file.save(filepath)
-    data = extract_text_from_pdf(filepath, prompt=prompt)
-    
-    analysis_prompt = """You are a medical AI assistant specializing in urinary tract infections (UTIs) and microbiology. Given a patient's Urine Culture & Sensitivity Test data in JSON format, analyze the parameters to identify possible infections, their severity, and provide necessary precautions. Your response should include:
-
-    Infection Detection:
-    - Identify possible infections based on the organism isolated and colony count.
-    - Provide reasoning based on microbiological findings.
-    
-    Severity Assessment:
-    - Categorize as Normal, Mild, Moderate, or Severe based on threshold deviations.
-    
-    Precautions & Preventive Measures:
-    - Suggest hygiene practices, fluid intake recommendations, and monitoring guidelines.
-    - Recommend when to seek medical attention.
-    
-    Treatment Recommendations (General Guidance):
-    - Basic dietary or lifestyle changes.
-    - Importance of completing prescribed antibiotic courses.
-    - When to consult a doctor.
-    
-    Urgency Indicator:
-    - Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
-
-    Follow this Output format strictly:
-    {
-      "output_format": {
-        "disease_detection": {
-          "possible_conditions": ["Urinary Tract Infection (UTI)", "Kidney Infection", "Asymptomatic Bacteriuria", "Resistant Bacterial Infection"],
-          "analysis": "Detailed explanation of detected bacterial organisms, their significance, and antibiotic sensitivity results."
-        },
-        "severity_assessment": {
-          "category": "Normal / Mild / Moderate / Severe",
-          "explanation": "Justification based on standard reference ranges for colony count and organism pathogenicity."
-        },
-        "recommendations": {
-           "dietary_changes": "Increase water intake; avoid caffeine, alcohol, and spicy foods.",
-           "lifestyle_changes": "Maintain hygiene, urinate frequently to flush bacteria, and avoid holding urine for long periods.",
-           "medical_attention": "Consult a doctor if symptoms persist or if antibiotic resistance is detected."
-       },
-        "urgency": "Immediate Concern / Follow-up Needed / No Significant Issue"
-      }
-    }
-    """
-    response = get_completion_0(data=data, prompt=analysis_prompt)
-    print(response)
-    return extract_json(response)
-
-@app.route('/pet_scan_report' , methods=["POST"])
-def pet_scan_report():
-    prompt = """You are given a radiology report in text format. Extract the relevant values for the PET Scan and format them in the following JSON structure. Ensure that each value is associated with its correct unit, and ignore any unnecessary information. Below is the expected structure of the output:
-
-Extract the following values from the report:
-- Examination Type
-- Radiotracer Used
-- Dose (millicuries)
-- Blood Glucose Level (mg/dL)
-- Findings (Neck, Chest, Abdomen/Pelvis, Skeletal)
-- Impression (Key observations)
-"""
-    file = request.files['report']
-    filepath = 'files/'
-    filename = file.filename
-    filepath = os.path.join(filepath, filename)
-    file.save(filepath)
-    data = extract_text_from_pdf(filepath, prompt=prompt)
-    
-    analysis_prompt = """You are a medical AI assistant specializing in radiology and PET scan analysis. Given a patient's PET scan data in JSON format, analyze the parameters to identify possible abnormalities, their severity, and provide necessary precautions. Your response should include:
-
-    Abnormality Detection:
-    - Identify possible conditions based on PET scan findings.
-    - Provide reasoning based on observed hypermetabolic or hypometabolic activity.
-    
-    Severity Assessment:
-    - Categorize as Normal, Mild, Moderate, or Severe based on threshold deviations.
-    
-    Precautions & Preventive Measures:
-    - Suggest follow-up imaging, biopsy recommendations, and lifestyle adjustments.
-    - Recommend when to seek medical attention.
-    
-    Treatment Recommendations (General Guidance):
-    - Basic lifestyle and dietary suggestions for metabolic health.
-    - When to consult a radiologist or oncologist.
-    
-    Urgency Indicator:
-    - Indicate if the findings suggest Immediate Concern, Follow-up Needed, or No Significant Issue.
-
-    Follow this Output format strictly:
-    {
-       "output_format": {
-        "disease_detection": {
-            "possible_conditions": [
-                "Metastatic Cancer", "Breast Tumor", "Esophagitis", "Pleural Effusion", "Osseous Lesions"
-            ],
-            "analysis": "Findings indicate hypermetabolic lesions, suggesting potential malignancy. "
-                        "Abnormal metabolic activity requires further evaluation."
-        },
-        "severity_assessment": {
-            "category": "Normal / Mild / Moderate / Severe",
-            "explanation": "Severity is assessed based on the extent of hypermetabolic activity and spread of lesions."
-        },
-        "recommendations": {
-            "dietary_changes": "Ensure adequate nutrition to maintain energy levels.",
-            "lifestyle_changes": "Avoid smoking and alcohol; regular follow-ups with oncologists are necessary.",
-            "medical_attention": "Oncological consultation recommended for biopsy and further diagnostics."
-        },
-        "urgency": "Immediate Concern / Follow-up Needed / No Significant Issue"
-    }
-}
-    """
-    
-    response = get_completion_0(data=data, prompt=analysis_prompt)
-    print(response)
     return extract_json(response)
 
 # Main driver function
