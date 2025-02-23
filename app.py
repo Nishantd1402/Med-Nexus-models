@@ -208,7 +208,7 @@ Provide the output in the following JSON format:
 def final_symptom():
   conv = request.form.get('symptom')
   
-  prompt3 = f"""analyze the question and symptoms narrow down to 1 condition with highest likelihood which user might have and suggest next steps to confirm the condition mentioned in analysis, using tests or visiting the doctor. Symtoms = ```{session.get('symp')}```. initial analysis - ```{session.get('analysis')}``` questions and user ansers = ```{conv}```
+  prompt3 = f"""analyze the question and symptoms narrow down to 1-2 condition with which user might have and suggest next steps to confirm the condition mentioned in analysis, using tests or visiting the doctor. Symtoms = ```{session.get('symp')}```. initial analysis - ```{session.get('analysis')}``` questions and user ansers = ```{conv}```
 
 
 Provide the output in the following JSON format:
