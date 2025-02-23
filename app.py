@@ -110,6 +110,51 @@ app.secret_key = 'your-strong-secret-key'
 #     # Return the classification result
 #     return predicted_class
 
+@app.route('/prescription' , methods=['POST'])
+def prescription():
+    prompt = """You are an intelligent medical assistant that extracts structured information from prescriptions. Given the extracted text from a PDF prescription, generate a structured JSON output that includes the following details:
+
+Medicine Name - The exact name of the medicine prescribed.
+Purpose - The reason for prescribing this particular medicine in the whole prescription (e.g., "Pain Relief", "Blood Pressure Control", etc.).
+Dosage - The prescribed dose of the medicine (e.g., "500 mg", "1 tablet").
+Frequency - How often the medicine should be taken (e.g., "Once daily", "Twice daily").
+Timing - When the medicine should be taken (e.g., "Before Breakfast", "After Lunch", "At Night").
+Duration - The number of days or weeks the medicine should be taken.
+Make sure to analyze the prescription carefully and format the response in a valid JSON format as shown in the skeleton below:
+
+{
+  "medications": [
+    {
+      "medicine_name": "",
+      "purpose": "",
+      "dosage": "",
+      "frequency": "",
+      "timing": "",
+      "duration": ""
+    },
+    {
+      "medicine_name": "",
+      "purpose": "",
+      "dosage": "",
+      "frequency": "",
+      "timing": "",
+      "duration": ""
+    }
+  ]
+}
+
+"""
+    file = request.files['report']
+    filepath = 'files/'
+    filename = file.filename
+    filepath = os.path.join(filepath, filename)
+    file.save(filepath)
+    data = extract_text_from_pdf(filepath , prompt=prompt)
+    response = get_completion_0(prompt=prompt , data= data)
+    print(response)
+    response = extract_json_0(response)
+    return response
+
 @app.route('/symptoms' , methods=['POST'])
 def symptom():
   data = request.form.get('symptom')
