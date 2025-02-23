@@ -237,7 +237,7 @@ Provide the output in the following JSON format:
     ]
 }}"""
   results = extract_json_0((get_completion(prompt=prompt3 , data=None)))
-  return json.loads(results)
+  return results
 
 
 @app.route('/CBC_report' , methods=["POST"])
